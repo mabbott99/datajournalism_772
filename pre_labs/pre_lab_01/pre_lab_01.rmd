@@ -186,7 +186,7 @@ umd_courses |>
   arrange(desc(total_seats))
 ```
 
-Compared to the previous codeblock, what has changed and how did that affect the result? **Answer**
+Compared to the previous codeblock, what has changed and how did that affect the result? **Answer** we can now see the number of seats in each course
 
 ### Task 13: different kinds of summarizations
 
@@ -204,7 +204,7 @@ umd_courses |>
   arrange(desc(total_seats))
 ```
 
-Compared to the previous codeblock, what has changed and how did that affect the result? What do the top terms have in common? **Answer**
+Compared to the previous codeblock, what has changed and how did that affect the result? What do the top terms have in common? **Answer** we now have the mean and the median of seats
 
 ### Task 14: more aggregations
 
@@ -218,15 +218,15 @@ umd_courses |>
     total_seats = sum(seats),
     mean_seats = mean(seats),
     median_seats = median(seats),
-    # add minimum seats here
-    # add maximum seats here
+    min(seats),
+    max(seats),
   ) |>
   arrange(desc(total_seats))
 ```
 
 Compared to the previous codeblock, what has changed and how did that affect the result? How is the data sorted?
 
-**Answer**
+**Answer** we now have min and max amount of seats
 
 ### Task 12: Questions
 
@@ -234,8 +234,8 @@ No code here; I want you to provide three questions that this data suggests to y
 
 **Answer**
 
-1.  
+1.  What is the minimum amount of seats for courses in English?
 
-2.  
+2.  What is the maximum amount of seats for courses in the Business dept?
 
-3.  
+3.  What is the median amount of seats for all the courses available?
