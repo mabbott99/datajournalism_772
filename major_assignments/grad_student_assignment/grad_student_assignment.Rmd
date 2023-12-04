@@ -1,0 +1,111 @@
+---
+title: "grad_student_assignment"
+author: "Mekhi Abbott"
+date: "2023-12-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+*PROFILE*
+
+The original dataset that I decided to work with is Maryland International Migration data, courtesy of Maryland's Open Data Portal. It essentially shows the amount of people who are moving into Maryland via international countries from the years 2001 - 2021. There were a few issues I ran into with this data, however. One being that the dataset is relatively small. Additionally, it didn't give me the breakdown in demographics in the manner of which I hope it would. I specifically want to look at the history and the projection of Black and Hispanic international migration.It also would've been nice to be able to get some data on international migration prior to the year 2001. 
+
+Additionally, all of the datasets that I am bringing into R isn't separated by zip code of GEOID. One is broken down by county, but each county is its own column, so that is going to limit the way in which I can join the dataframes. 
+
+
+```{r}
+#Load Libraries
+
+library(tidyverse)
+library(ggthemes)
+library(janitor)
+library(lubridate)
+library(tidycensus)
+library(sf)
+library(tigris)
+census_api_key("fe977fabda8a0b7b6a0a516c0563730d252f6b35", overwrite=TRUE)
+
+```
+
+*Q1
+What does the future of Hispanic population numbers look like? How is it projected to grow/shrink in the next 15-25 years? What was the percent change between the years 2010 and 2020?
+
+After that, use a map or chart to show projected growth in the year 2030. 
+
+A: The Hispanic population in the state of Maryland is projected to grow by 257,381 by the year 2045. The total Hispanic population grew by 35.5% from 2010 to 2020. 
+
+Story Idea: Given the fact that the Hispanic populations continue to grow in Maryland and that Maryland has the third highest Bachelor's degree rate (21%) and the second highest rate of Hispanics with a Master's level education (9.2%) in the United States, how can we expect Hispanic education levels to grow over time? What is being done to address improving these numbers on a legislative level, if anything at all? 
+
+Issues: One of the issues I ran into trying to answer this question is that for some reason, I can't join together the projected population dataset with the counties data. I tried a multitude of different ways (left_join, outer_join), I even asked ChatGPT. When I tried inner join the code actually ran, but it wasn't giving me any results. There was a couple of times I was able to get left_join to run, but the dataset that it would=ld give me would result in one of the two dataset's information being blank. For example, either all of the county data would say N/A or all of the projected_population data would say N/A. 
+
+To be clear, I tried to filter only 2020 and and 2030 Hispanic population data, and then join it with the counties data so I can map it. I tried to then take that dataframe to make a map showing the differences visually, but I couldn't get it to work. I spent more than an hour on that. 
+
+```{r}
+md_migration <- read_csv("data/Maryland_International_Migration__2001-2021.csv")
+
+population_projections <- read_csv("data/Household_Population_Projections_for_Non-Hispanic_White_and_All_Other_by_Age__Sex_and_Race.csv") |> clean_names()
+
+population_projections$name <- population_projections$jurisdiction
+population_projections$jurisdiction <- NULL
+
+population_projections |> 
+  filter(str_detect(category, "Total Hispanic")) |>
+  group_by(name, year) |>
+  summarise(total) |>
+  arrange(desc(total))
+
+projected_growth <- 886755 - 629374
+
+pct_change <- (629374-464376)/464376
+
+population_projections_2030 <- population_projections |>
+  filter(year == "2030") |> 
+  filter(category == "Total Hispanic")
+
+population_projections_2030 <- population_projections_2030 |>
+  select(name, total, category)
+
+md_statewide_county_geo <- get_acs(geography = "county",
+              variables = c(population = "B01001_001"),
+              year = 2021,
+              state = "MD",
+              geometry = TRUE)
+
+md_statewide_county_geo <- md_statewide_county_geo |>
+rename(county = NAME) |>
+  mutate(county = str_to_title(str_remove_all(county,", Maryland"))) |>
+  mutate(county = str_trim(county,side="both"))
+
+population_projections_2030 |>
+ggplot() +
+  geom_line(aes(x=name, y=total)) +
+   theme(
+    axis.text.x = element_text(angle = 45,  hjust=1)) +
+  labs(
+    title="Maryland Hispanic Projected Growth",
+    x = "Jurisdiction",
+    y = "total (projected)",
+    caption = "source: Maryland.gov" 
+    
+  )
+
+hispanic_education <- read_csv("data/grad_assignment_data - hispanic_education.csv")
+
+hispanic_education |> arrange(desc(Bachelors))
+
+
+```
+
+```{r}
+blk_ethnicity <- read.csv("data/grad_assignment_data - blk_ethnicity.csv") |> clean_names()
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
