@@ -17,8 +17,7 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 
 The original dataset that I decided to work with is Maryland International Migration data, courtesy of Maryland's Open Data Portal. It essentially shows the amount of people who are moving into Maryland via international countries from the years 2001 - 2021. There were a few issues I ran into with this data, however. One being that the dataset is relatively small. Additionally, it didn't give me the breakdown in demographics in the manner of which I hope it would. I specifically want to look at the history and the projection of Black and Hispanic international migration.It also would've been nice to be able to get some data on international migration prior to the year 2001. 
 
-Additionally, all of the datasets that I am bringing into R isn't separated by zip code of GEOID. One is broken down by county, but each county is its own column, so that is going to limit the way in which I can join the dataframes. 
-
+However, I found another dataset that shows population numbers from 2010 and then projects those numbers up until 2045. This dataset was very helpful for me. I actually ended up using that for the majority of my data analysis.
 
 ```{r}
 #Load Libraries
@@ -37,15 +36,20 @@ census_api_key("fe977fabda8a0b7b6a0a516c0563730d252f6b35", overwrite=TRUE)
 *Q1
 What does the future of Hispanic population numbers look like? How is it projected to grow/shrink in the next 15-25 years? What was the percent change between the years 2010 and 2020?
 
-After that, use a map or chart to show projected growth in the year 2030. 
+After that, use a map or chart to show projected growth in the year 2030. Based off the map showing projected populaion in 2023, which counties stand out the most?
 
 A: The Hispanic population in the state of Maryland is projected to grow by 257,381 by the year 2045. The total Hispanic population grew by 35.5% from 2010 to 2020. 
 
+The counties that stand out the most in the map are PG and Montgomery County. They already have pretty strong Hispanic population and they are projected to grow the most in 7 years compared to all the other counties in Maryland.
+
 Story Idea: Given the fact that the Hispanic populations continue to grow in Maryland and that Maryland has the third highest Bachelor's degree rate (21%) and the second highest rate of Hispanics with a Master's level education (9.2%) in the United States, how can we expect Hispanic education levels to grow over time? What is being done to address improving these numbers on a legislative level, if anything at all? 
 
-Issues: One of the issues I ran into trying to answer this question is that for some reason, I can't join together the projected population dataset with the counties data. I tried a multitude of different ways (left_join, outer_join), I even asked ChatGPT. When I tried inner join the code actually ran, but it wasn't giving me any results. There was a couple of times I was able to get left_join to run, but the dataset that it would=ld give me would result in one of the two dataset's information being blank. For example, either all of the county data would say N/A or all of the projected_population data would say N/A. 
+Issues: One of the issues I ran into trying to answer this question is that for some reason, I can't join together the projected population dataset with the counties data. I tried a multitude of different ways (left_join, outer_join), I even asked ChatGPT. When I tried inner join the code actually ran, but it wasn't giving me any results. There was a couple of times I was able to get left_join to run, but the dataset that it would give me would result in one of the two dataset's information being blank. For example, either all of the county data would say N/A or all of the projected_population data would say N/A. 
 
-To be clear, I tried to filter only 2020 and and 2030 Hispanic population data, and then join it with the counties data so I can map it. I tried to then take that dataframe to make a map showing the differences visually, but I couldn't get it to work. I spent more than an hour on that. 
+I was finally able to get a map after revisiting it a day later. However, I tried to make a line graph of projected growth and I was able to get everything displayed except for the actually numbers (line graph).
+
+I also added a black ethnicity dataframe to my data folder that I never ended up using. I thought it would be interesting to try to incorporate at first but I couldn't find a way to fit it in. 
+
 
 ```{r}
 md_migration <- read_csv("data/Maryland_International_Migration__2001-2021.csv")
@@ -83,18 +87,29 @@ rename(county = NAME) |>
   mutate(county = str_to_title(str_remove_all(county,", Maryland"))) |>
   mutate(county = str_trim(county,side="both"))
 
-population_projections_2030 |>
-ggplot() +
-  geom_line(aes(x=name, y=total)) +
-   theme(
-    axis.text.x = element_text(angle = 45,  hjust=1)) +
-  labs(
-    title="Maryland Hispanic Projected Growth",
-    x = "Jurisdiction",
-    y = "total (projected)",
-    caption = "source: Maryland.gov" 
+md_statewide_county_map <- md_statewide_county_geo |>
+  inner_join(population_projections_2030, by=c("county" = "name"))
+
+md_statewide_county_map |>
+  ggplot() +
+  geom_sf(data=md_statewide_county_map, aes(fill=total)) +
+  theme_minimal()
+
+#write_csv(md_statewide_county_map, "data/md_statewide_county_map.csv")
+
+
+#population_projections_2030 |>
+#ggplot() +
+  #geom_line(aes(x=name, y=total)) +
+   #theme(
+    #axis.text.x = element_text(angle = 45,  hjust=1)) +
+  #labs(
+    #title="Maryland Hispanic Projected Growth",
+    #x = "Jurisdiction",
+    #y = "total (projected)",
+    #caption = "source: Maryland.gov" 
     
-  )
+ # )
 
 hispanic_education <- read_csv("data/grad_assignment_data - hispanic_education.csv")
 
@@ -102,9 +117,61 @@ hispanic_education |> arrange(desc(Bachelors))
 
 
 ```
+Q: Has the black population in Baltimore seen an uptick or a downwards trend? 
+
+A: Black population in Baltimore has dropped since 2010, but projections show that the numbers should rise and creep back towards that number it was in 2010. 
+
+Pitch: What has led to the slight dip in Black population in the past 10+ years? How much has gentrification played a part in that?
+```{r}
+
+population_projections |>
+  filter(str_detect(category, "Total Non-Hispanic Black")) |>
+  group_by(name, year) |>
+  summarise(total) |>
+  arrange(desc(total))
+
+population_projections_black <- population_projections |>
+  filter(category == "Total Non-Hispanic Black") |>
+  filter(name == "Baltimore City") |>
+  select(year, total, name)
+
+population_projections_black |>
+  ggplot() +
+  geom_bar(aes(x=(year), weight=total)) +
+  coord_flip() + 
+  theme_economist() +
+  labs(
+    title="Black Population (+ Projected) in Baltimore",
+    x = "year",
+    y = "total population",
+    caption = "source: Maryland.gov"
+    
+  )
+
+
+```
+Q: What does Black and Hispanic population numbers look like in the year 2045 in PG County? How does it compare to the white population?
+
+A: Black population is projected to be 609,349 and Hispanic population is projected to be 199254. Both of these are projected to grow from the current numbers. However, white population in PG county is projected to fall. By 2045, the white population is projected to be only 10.6% of the total population of Black and Hispanic residents. 
+
+Pitch: Recently, Charles County eclipsed PG County as the most affluent black county in not only Maryland, but also in the whole USA. What is happening in Charles County that is contributing to that? What ways can PG regain its spot as the richest black county in the nation?
 
 ```{r}
-blk_ethnicity <- read.csv("data/grad_assignment_data - blk_ethnicity.csv") |> clean_names()
+population_projections |>
+  filter(str_detect(name, "Prince George's County")) |>
+  group_by(name, year, category) |>
+  summarise(total) |>
+  arrange(desc(total))
+
+total_black_pop_PG <- 609349
+
+total_hispanic_pop_PG <- 199254
+
+total_white_pop_PG <- 85637
+
+pct <- total_white_pop_PG/(total_hispanic_pop_PG+total_black_pop_PG)
+  
+
 ```
 
 
